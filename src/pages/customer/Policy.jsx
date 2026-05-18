@@ -761,6 +761,7 @@ function Policy() {
                   <span className="absolute bottom-0 left-5 right-5 h-[2px] bg-gray-900 rounded-full" />
                 )}
               </button>
+              
             );
           })}
         </div>
