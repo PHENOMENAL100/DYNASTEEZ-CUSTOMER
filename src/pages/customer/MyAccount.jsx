@@ -8,9 +8,21 @@ import {
   CreditCard,
   Settings,
   Crown,
+  Home,
+  ChevronRight,
 } from "lucide-react";
 
+const LANDING_URL = 'http://localhost:5175';
+
 function MyAccount() {
+  // Get user data from localStorage (set by landing page LoginModal)
+  const storedUser = JSON.parse(localStorage.getItem('dynasteez_user') || '{}');
+  const userFirstName = storedUser.firstName || 'Customer';
+  const userLastName = storedUser.lastName || '';
+  const userFullName = `${userFirstName} ${userLastName}`.trim();
+  const userEmail = storedUser.email || 'customer@dynasteez.com';
+  const userPhone = storedUser.phone || '+234 0000000000';
+
   const [activeTab, setActiveTab] = useState("Profile");
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -18,9 +30,9 @@ function MyAccount() {
   const [addresses, setAddresses] = useState([
     {
       id: 1,
-      name: "Okonkwo Emmanuel",
+      name: userFullName,
       address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
-      phone: "+234 9034234303",
+      phone: userPhone,
     },
   ]);
   const [addressForm, setAddressForm] = useState({
@@ -43,9 +55,9 @@ function MyAccount() {
     cvv: "",
   });
   const [manageData, setManageData] = useState({
-    username: "Emmanuel",
-    email: "okonkwo@gmail.com",
-    phone: "+234 9034234303",
+    username: userFirstName,
+    email: userEmail,
+    phone: userPhone,
     password: "***********",
   });
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -64,7 +76,7 @@ function MyAccount() {
   ];
 
   const [profileData, setProfileData] = useState({
-    username: "Emmanuel",
+    username: userFirstName,
     favoriteCategories: [],
     favoriteStyles: [],
   });
@@ -801,9 +813,19 @@ function MyAccount() {
         </div>
       )}
 
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <a href={LANDING_URL} className="hover:text-black transition-colors flex items-center gap-1">
+          <Home className="w-4 h-4" />
+          Home
+        </a>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">My Account</span>
+      </div>
+
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-          Hi Emmanuel!
+          Hi {userFirstName}!
         </h1>
       </div>
 
