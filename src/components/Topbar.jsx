@@ -154,9 +154,8 @@ function Topbar() {
   };
 
   const handleLogoutClick = () => {
-    localStorage.removeItem('dynasteez_token');
-    localStorage.removeItem('dynasteez_user');
-    window.location.href = LANDING_URL;
+
+    
     setOpen(false);
   };
 
