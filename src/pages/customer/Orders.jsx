@@ -251,18 +251,12 @@ function Orders() {
       return;
     }
 
-    console.log("Return requested:", {
-      orderId: selectedOrder.id,
-      items: selectedItems,
-    });
-
     setReturnView(false);
     setSelectedOrder(null);
     setReturnReasonsMap({});
   };
 
   const handleSubmitReview = () => {
-    console.log("Review submitted:", reviewForm);
     setShowReviewModal(false);
   };
 

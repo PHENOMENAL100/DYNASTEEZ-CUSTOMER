@@ -31,7 +31,6 @@ function Topbar() {
   };
 
   const handleLogoutClick = () => {
-    console.log("Logging out...");
     setOpen(false);
   };
 

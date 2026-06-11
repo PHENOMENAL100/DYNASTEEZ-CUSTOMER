@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Check,
   Plus,
@@ -9,50 +9,71 @@ import {
   Settings,
   Crown,
 } from "lucide-react";
+import useCustomerProfile from "../../hooks/useCustomerProfile";
+import useAddresses from "../../hooks/useAddresses";
+import customerService from "../../services/customerService";
 
 function MyAccount() {
+  const { profile, loading: profileLoading, updateProfile, updatePassword } = useCustomerProfile();
+  const { addresses, loading: addressesLoading, addAddress, updateAddress, deleteAddress } = useAddresses();
+  
   const [activeTab, setActiveTab] = useState("Profile");
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
-  const [addresses, setAddresses] = useState([
-    {
-      id: 1,
-      name: "Okonkwo Emmanuel",
-      address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
-      phone: "+234 9034234303",
-    },
-  ]);
   const [addressForm, setAddressForm] = useState({
     name: "",
     address: "",
     phone: "",
   });
   const [showCardModal, setShowCardModal] = useState(false);
-  const [cards, setCards] = useState([
-    {
-      id: 1,
-      type: "VERVE",
-      last4: "1303",
-      expiry: "12/26",
-    },
-  ]);
+  const [cards, setCards] = useState([]);
   const [cardForm, setCardForm] = useState({
     cardNumber: "",
     expiry: "",
     cvv: "",
   });
   const [manageData, setManageData] = useState({
-    username: "Emmanuel",
-    email: "okonkwo@gmail.com",
-    phone: "+234 9034234303",
+    username: "",
+    email: "",
+    phone: "",
     password: "***********",
   });
+
+  // Initialize form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setManageData({
+        username: profile.username || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        password: "***********",
+      });
+    }
+  }, [profile]);
+
+  // Load payment methods
+  useEffect(() => {
+    const loadPaymentMethods = async () => {
+      try {
+        const paymentMethods = await customerService.getPaymentMethods();
+        setCards(paymentMethods || []);
+      } catch (err) {
+        console.error("Failed to load payment methods");
+      }
+    };
+    loadPaymentMethods();
+  }, []);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+  });
+  const [profileData, setProfileData] = useState({
+    username: "",
+    favoriteCategories: [],
+    favoriteStyles: [],
   });
 
   const tabs = [
@@ -63,14 +84,19 @@ function MyAccount() {
     { id: "VIP", label: "Dynasteez VIP", icon: Crown },
   ];
 
-  const [profileData, setProfileData] = useState({
-    username: "Emmanuel",
-    favoriteCategories: [],
-    favoriteStyles: [],
-  });
-
   const categories = ["Women", "Men", "Kids"];
   const styles = ["Basic", "Casual", "Sporty", "Corporate"];
+
+  // Initialize profile data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        username: profile.username || "",
+        favoriteCategories: profile.favoriteCategories || [],
+        favoriteStyles: profile.favoriteStyles || [],
+      });
+    }
+  }, [profile]);
 
   const toggleCategory = (cat) => {
     setProfileData((prev) => ({
@@ -90,9 +116,14 @@ function MyAccount() {
     }));
   };
 
-  const handleSave = () => {
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+  const handleSave = async () => {
+    try {
+      await updateProfile(profileData);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to save profile");
+    }
   };
 
   const handleAddAddress = () => {
@@ -107,23 +138,31 @@ function MyAccount() {
     setShowAddressModal(true);
   };
 
-  const handleSaveAddress = () => {
-    if (editingAddress) {
-      setAddresses(
-        addresses.map((a) =>
-          a.id === editingAddress.id ? { ...a, ...addressForm } : a
-        )
-      );
-    } else {
-      setAddresses([...addresses, { id: Date.now(), ...addressForm }]);
+  const handleSaveAddress = async () => {
+    try {
+      if (editingAddress) {
+        await updateAddress(editingAddress.id, addressForm);
+      } else {
+        await addAddress(addressForm);
+      }
+      setShowAddressModal(false);
+      setEditingAddress(null);
+      setAddressForm({ name: "", address: "", phone: "" });
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to save address");
     }
-    setShowAddressModal(false);
-    setEditingAddress(null);
-    setAddressForm({ name: "", address: "", phone: "" });
   };
 
-  const handleDeleteAddress = (id) => {
-    setAddresses(addresses.filter((a) => a.id !== id));
+  const handleDeleteAddress = async (id) => {
+    try {
+      await deleteAddress(id);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to delete address");
+    }
   };
 
   const handleAddCard = () => {
@@ -131,32 +170,50 @@ function MyAccount() {
     setShowCardModal(true);
   };
 
-  const handleSaveCard = () => {
-    const last4 = cardForm.cardNumber.slice(-4);
-    setCards([
-      ...cards,
-      {
-        id: Date.now(),
-        type: "VERVE",
-        last4: last4 || "0000",
-        expiry: cardForm.expiry || "12/26",
-      },
-    ]);
-    setShowCardModal(false);
-    setCardForm({ cardNumber: "", expiry: "", cvv: "" });
-  };
-
-  const handleDeleteCard = (id) => {
-    setCards(cards.filter((c) => c.id !== id));
-  };
-
-  const handlePasswordSave = () => {
-    if (passwordForm.newPassword === passwordForm.confirmPassword && passwordForm.newPassword) {
-      setManageData({ ...manageData, password: "***********" });
-      setShowPasswordModal(false);
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const handleSaveCard = async () => {
+    try {
+      const paymentData = {
+        cardNumber: cardForm.cardNumber,
+        expiry: cardForm.expiry,
+        cvv: cardForm.cvv,
+      };
+      const newCard = await customerService.addPaymentMethod(paymentData);
+      setCards([...cards, newCard]);
+      setShowCardModal(false);
+      setCardForm({ cardNumber: "", expiry: "", cvv: "" });
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to save card");
+    }
+  };
+
+  const handleDeleteCard = async (id) => {
+    try {
+      await customerService.deletePaymentMethod(id);
+      setCards(cards.filter((c) => c.id !== id));
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to delete card");
+    }
+  };
+
+  const handlePasswordSave = async () => {
+    if (passwordForm.newPassword === passwordForm.confirmPassword && passwordForm.newPassword) {
+      try {
+        await updatePassword({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        });
+        setManageData({ ...manageData, password: "***********" });
+        setShowPasswordModal(false);
+        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      } catch (err) {
+        alert("Failed to update password");
+      }
     }
   };
 
@@ -169,6 +226,20 @@ function MyAccount() {
   const closeCardModal = () => {
     setShowCardModal(false);
     setCardForm({ cardNumber: "", expiry: "", cvv: "" });
+  };
+
+  const handleSaveManageData = async () => {
+    try {
+      await updateProfile({
+        username: manageData.username,
+        email: manageData.email,
+        phone: manageData.phone,
+      });
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to save account information");
+    }
   };
 
   const closePasswordModal = () => {
@@ -574,7 +645,7 @@ function MyAccount() {
 
             <div className="flex justify-end mt-8">
               <button
-                onClick={handleSave}
+                onClick={handleSaveManageData}
                 className="bg-black text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors cursor-pointer"
               >
                 Save Changes

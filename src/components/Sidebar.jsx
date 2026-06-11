@@ -23,7 +23,6 @@ function Sidebar() {
   ];
 
   const handleSignOut = () => {
-    console.log("Signing out...");
   };
 
   return (

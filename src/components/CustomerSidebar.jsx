@@ -24,7 +24,6 @@ function CustomerSidebar() {
 
   const handleSignOut = () => {
     // Add your sign-out logic here
-    console.log("Signing out...");
   };
 
   return (
