@@ -13,15 +13,22 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
-  ClipboardClock
+  ClipboardClock,
+  Home,
+  AlertTriangle,
+  ShoppingCart,
+  CheckCheck,
 } from "lucide-react";
 import capImage from "../../assets/placeholder-caps.jpg";
 import shirtImage from "../../assets/placeholder-shirt.jpg";
 import shortsImage from "../../assets/shorts.jpg";
 import topImage from "../../assets/placeholder-sleeves.jpg";
 
+const LANDING_URL = 'http://localhost:5175';
+const CART_KEY = 'dynasteez_cart';
+
 function Orders() {
-  const [activeTab, setActiveTab] = useState("Return Order");
+  const [activeTab, setActiveTab] = useState("All Orders");
   const [currentPage, setCurrentPage] = useState(1);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -29,15 +36,18 @@ function Orders() {
   const [trackView, setTrackView] = useState(false);
   const [returnView, setReturnView] = useState(false);
   const [returnReasonsMap, setReturnReasonsMap] = useState({});
+  const [showReturnConfirm, setShowReturnConfirm] = useState(false);
+  const [buyAgainToast, setBuyAgainToast] = useState(null);
 
   const reviewModalRef = useRef(null);
+  const returnConfirmRef = useRef(null);
 
   const tabs = [
     { id: "All Orders", label: "All Orders", icon: Package },
     { id: "Delivered Orders", label: "Delivered Orders", icon: CheckCircle },
     { id: "Pending Orders", label: "Pending Orders", icon: Clock },
     { id: "Review Orders", label: "Review Orders", icon: Star },
-    { id: "Return Order", label: "Return Order", icon: RotateCcw },
+    { id: "Returned Orders", label: "Returned Orders", icon: RotateCcw },
   ];
 
   const returnReasonsList = [
@@ -64,8 +74,9 @@ function Orders() {
       tax: 500,
       total: 182500,
       canReview: true,
-      canReturn: false,
+      canReturn: true,
       canTrack: true,
+      isReturned: false,
       customer: {
         name: "Okonkwo Emmanuel",
         address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
@@ -125,9 +136,10 @@ function Orders() {
       delivery: 1000,
       tax: 0,
       total: 101000,
-      canReview: true,
+      canReview: false,
       canReturn: false,
       canTrack: true,
+      isReturned: false,
       customer: {
         name: "Okonkwo Emmanuel",
         address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
@@ -176,6 +188,50 @@ function Orders() {
         },
       ],
     },
+    {
+      id: "ORD-003",
+      status: "Delivered",
+      items: [
+        { id: 5, name: "Dynasteez Hoodie", qty: 1, price: 50000, image: topImage },
+      ],
+      subtotal: 50000,
+      delivery: 2000,
+      tax: 500,
+      total: 52500,
+      canReview: true,
+      canReturn: true,
+      canTrack: false,
+      isReturned: false,
+      customer: {
+        name: "Okonkwo Emmanuel",
+        address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
+        phone: "+234 9034234303",
+      },
+      trackingSteps: [],
+    },
+    {
+      id: "ORD-004",
+      status: "Returned",
+      items: [
+        { id: 6, name: "Dynasteez Jersey", qty: 1, price: 38000, image: shirtImage },
+      ],
+      subtotal: 38000,
+      delivery: 2000,
+      tax: 0,
+      total: 40000,
+      canReview: false,
+      canReturn: false,
+      canTrack: false,
+      isReturned: true,
+      returnReason: "Size/fit issue",
+      returnDate: "May 15, 2026",
+      customer: {
+        name: "Okonkwo Emmanuel",
+        address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
+        phone: "+234 9034234303",
+      },
+      trackingSteps: [],
+    },
   ]);
 
   useEffect(() => {
@@ -183,23 +239,87 @@ function Orders() {
       if (reviewModalRef.current && !reviewModalRef.current.contains(event.target)) {
         setShowReviewModal(false);
       }
+      if (returnConfirmRef.current && !returnConfirmRef.current.contains(event.target)) {
+        setShowReturnConfirm(false);
+      }
     };
 
-    if (showReviewModal) {
+    if (showReviewModal || showReturnConfirm) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showReviewModal]);
+  }, [showReviewModal, showReturnConfirm]);
+
+  // ─── BUY AGAIN FUNCTIONALITY ───
+  const handleBuyAgain = (order) => {
+    try {
+      // Get existing cart
+      const existingCart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      
+      // Map order items to cart format (matching your landing page cart structure)
+      const newCartItems = order.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        quantity: item.qty,
+        size: "M", // Default size — adjust if you store sizes in orders
+        color: "Default", // Default color
+      }));
+
+      // Merge with existing cart: if item exists, increment quantity
+      const mergedCart = [...existingCart];
+      
+      newCartItems.forEach((newItem) => {
+        const existingIndex = mergedCart.findIndex(
+          (cartItem) => cartItem.id === newItem.id && cartItem.size === newItem.size
+        );
+        
+        if (existingIndex >= 0) {
+          mergedCart[existingIndex].quantity += newItem.quantity;
+        } else {
+          mergedCart.push(newItem);
+        }
+      });
+
+      // Save to localStorage
+      localStorage.setItem(CART_KEY, JSON.stringify(mergedCart));
+      
+      // Dispatch storage event so other tabs/components know cart updated
+      window.dispatchEvent(new StorageEvent('storage', { key: CART_KEY }));
+
+      // Show toast
+      setBuyAgainToast({
+        orderId: order.id,
+        itemCount: order.items.reduce((sum, item) => sum + item.qty, 0),
+      });
+
+      // Hide toast after 3 seconds
+      setTimeout(() => setBuyAgainToast(null), 3000);
+
+      // Optionally redirect to landing page cart after a short delay
+      // setTimeout(() => {
+      //   window.location.href = `${LANDING_URL}?view=cart`;
+      // }, 1500);
+
+    } catch (e) {
+      console.error("Failed to add items to cart", e);
+    }
+  };
+
+  const goToCart = () => {
+    window.location.href = `${LANDING_URL}?view=cart`;
+  };
 
   const filteredOrders = orders.filter((order) => {
     if (activeTab === "All Orders") return true;
     if (activeTab === "Delivered Orders") return order.status === "Delivered";
     if (activeTab === "Pending Orders") return order.status === "Pending";
-    if (activeTab === "Review Orders") return order.canReview;
-    if (activeTab === "Return Order") return order.canReturn;
+    if (activeTab === "Review Orders") return order.canReview && !order.isReturned;
+    if (activeTab === "Returned Orders") return order.isReturned;
     return true;
   });
 
@@ -225,6 +345,7 @@ function Orders() {
   const goBack = () => {
     setTrackView(false);
     setReturnView(false);
+    setShowReturnConfirm(false);
     setSelectedOrder(null);
     setReturnReasonsMap({});
   };
@@ -251,19 +372,54 @@ function Orders() {
       return;
     }
 
-    console.log("Return requested:", {
-      orderId: selectedOrder.id,
-      items: selectedItems,
-    });
+    setShowReturnConfirm(true);
+  };
 
+  const confirmReturn = () => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === selectedOrder.id
+          ? {
+              ...order,
+              status: "Returned",
+              isReturned: true,
+              canReturn: false,
+              canReview: false,
+              returnDate: new Date().toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              }),
+              returnReason: returnReasonsList.find(
+                (r) => r.value === Object.values(returnReasonsMap)[0]
+              )?.label,
+            }
+          : order
+      )
+    );
+
+    setShowReturnConfirm(false);
     setReturnView(false);
     setSelectedOrder(null);
     setReturnReasonsMap({});
+    setActiveTab("Returned Orders");
   };
 
   const handleSubmitReview = () => {
-    console.log("Review submitted:", reviewForm);
+    console.log("Review submitted:", {
+      orderId: selectedOrder.id,
+      ...reviewForm,
+    });
+    
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === selectedOrder.id ? { ...order, canReview: false } : order
+      )
+    );
+    
     setShowReviewModal(false);
+    setSelectedOrder(null);
+    setReviewForm({ rating: 0, comment: "" });
   };
 
   const formatPrice = (price) => {
@@ -272,109 +428,241 @@ function Orders() {
 
   const totalPages = 1;
 
-  const buttonBaseStyle = "px-6 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-700 hover:bg-black hover:text-white hover:border-black transition-all duration-200";
+  const buttonBaseStyle = "px-6 py-2 rounded-full text-sm font-medium border border-gray-200 text-gray-700 hover:bg-black hover:text-white hover:border-black transition-all duration-200 cursor-pointer select-none";
 
-  const OrderCard = ({ order }) => (
-    <div key={order.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-end gap-3 p-4 border-b border-gray-100">
-        {order.canTrack && (
-          <button
-            onClick={() => openTrackView(order)}
-            className={buttonBaseStyle}
-          >
-            Track
-          </button>
-        )}
-        {order.canReturn && (
-          <button
-            onClick={() => openReturnView(order)}
-            className={buttonBaseStyle}
-          >
-            Return
-          </button>
-        )}
-        <button className={buttonBaseStyle}>
-          Buy Again
-        </button>
-      </div>
+  const OrderCard = ({ order }) => {
+    const isReviewTab = activeTab === "Review Orders";
+    const isReturnedTab = activeTab === "Returned Orders";
 
-      <div className="p-4 md:p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-4">Order Items</h3>
-        <div className="space-y-4">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex items-center gap-4">
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-gray-900 truncate">{item.name}</h4>
-                <p className="text-xs text-gray-500 mt-1">Qty: x{item.qty}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</p>
-              </div>
+    return (
+      <div key={order.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden relative">
+        {/* Buy Again Toast */}
+        {buyAgainToast?.orderId === order.id && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-green-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <CheckCheck className="w-4 h-4" />
+            {buyAgainToast.itemCount} item(s) added to cart
+            <button 
+              onClick={goToCart}
+              className="ml-2 underline hover:text-green-100 text-xs"
+            >
+              View Cart
+            </button>
+          </div>
+        )}
+
+        {/* Order Header with Status Badge */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">Order ID:</span>
+            <span className="text-sm font-semibold text-gray-900">{order.id}</span>
+            {order.isReturned && (
+              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full uppercase">
+                Returned
+              </span>
+            )}
+            {order.status === "Delivered" && !order.isReturned && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase">
+                Delivered
+              </span>
+            )}
+            {order.status === "Pending" && (
+              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-full uppercase">
+                Pending
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-gray-400">
+            {order.returnDate && `Returned on ${order.returnDate}`}
+          </span>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 p-4 border-b border-gray-100">
+          {isReviewTab && order.canReview && (
+            <button
+              onClick={() => openReviewModal(order)}
+              className={buttonBaseStyle}
+            >
+              <Star className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+              Review
+            </button>
+          )}
+
+          {!isReviewTab && !isReturnedTab && (
+            <>
+              {order.canTrack && (
+                <button
+                  onClick={() => openTrackView(order)}
+                  className={buttonBaseStyle}
+                >
+                  <Truck className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+                  Track
+                </button>
+              )}
+              {order.canReturn && (
+                <button
+                  onClick={() => openReturnView(order)}
+                  className={buttonBaseStyle}
+                >
+                  <RotateCcw className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+                  Return
+                </button>
+              )}
+              <button 
+                onClick={() => handleBuyAgain(order)}
+                className={buttonBaseStyle}
+              >
+                <ShoppingCart className="w-4 h-4 inline mr-1" strokeWidth={1.5} />
+                Buy Again
+              </button>
+            </>
+          )}
+
+          {isReturnedTab && (
+            <div className="flex items-center gap-2 text-sm text-orange-600">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Reason: {order.returnReason}</span>
             </div>
-          ))}
+          )}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal:</span>
-            <span className="text-gray-900 font-medium">{formatPrice(order.subtotal)}</span>
+        <div className="p-4 md:p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Order Items</h3>
+          <div className="space-y-4">
+            {order.items.map((item) => (
+              <div key={item.id} className="flex items-center gap-4">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-medium text-gray-900 truncate">{item.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">Qty: x{item.qty}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</p>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Delivery:</span>
-            <span className="text-gray-900 font-medium">{formatPrice(order.delivery)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Tax:</span>
-            <span className="text-gray-900 font-medium">{formatPrice(order.tax)}</span>
-          </div>
-          <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-100">
-            <span className="text-gray-900">Total</span>
-            <span className="text-gray-900">{formatPrice(order.total)}</span>
+
+          <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Subtotal:</span>
+              <span className="text-gray-900 font-medium">{formatPrice(order.subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Delivery:</span>
+              <span className="text-gray-900 font-medium">{formatPrice(order.delivery)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Tax:</span>
+              <span className="text-gray-900 font-medium">{formatPrice(order.tax)}</span>
+            </div>
+            <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-100">
+              <span className="text-gray-900">Total</span>
+              <span className="text-gray-900">{formatPrice(order.total)}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Return Confirmation Modal
+  const ReturnConfirmModal = () => {
+    if (!showReturnConfirm || !selectedOrder) return null;
+
+    const selectedItems = selectedOrder.items
+      .filter((item) => returnReasonsMap[item.id])
+      .map((item) => ({
+        ...item,
+        reasonLabel: returnReasonsList.find((r) => r.value === returnReasonsMap[item.id])?.label,
+      }));
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div ref={returnConfirmRef} className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Return</h3>
+              <p className="text-sm text-gray-500">Are you sure you want to return these items?</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-6">
+            {selectedItems.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <img src={item.image} alt={item.name} className="w-10 h-10 rounded object-cover" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                  <p className="text-xs text-orange-600">Reason: {item.reasonLabel}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowReturnConfirm(false)}
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmReturn}
+              className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-full text-sm font-medium hover:bg-orange-700 transition-colors cursor-pointer"
+            >
+              Confirm Return
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Return Order Page View
   if (returnView && selectedOrder) {
     return (
       <div className="space-y-6">
-        {/* Back Button */}
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <a href={LANDING_URL} className="hover:text-black transition-colors flex items-center gap-1">
+            <Home className="w-4 h-4" />
+            Home
+          </a>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-gray-900 font-medium">My Orders</span>
+        </div>
+
         <button
           onClick={goBack}
-          className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-black transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-black transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Orders
         </button>
 
-        {/* RETURN Header */}
         <div className="text-center">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-widest uppercase">RETURN</h1>
+          <p className="text-sm text-gray-500 mt-1">Select items and reasons for return</p>
         </div>
 
-        {/* Return Items Table */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Table Header */}
           <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b border-gray-100">
             <div className="text-sm font-medium text-gray-900">Product & Quantity</div>
             <div className="text-sm font-medium text-gray-900 text-center">Price</div>
             <div className="text-sm font-medium text-gray-900 text-right">Reason for return</div>
           </div>
 
-          {/* Table Body */}
           <div className="divide-y divide-gray-100">
             {selectedOrder.items.map((item) => (
               <div key={item.id} className="grid grid-cols-3 gap-4 px-6 py-4 items-center">
-                {/* Product & Quantity */}
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                     <img
@@ -389,18 +677,16 @@ function Orders() {
                   </div>
                 </div>
 
-                {/* Price */}
                 <div className="text-center">
                   <p className="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</p>
                 </div>
 
-                {/* Reason Dropdown */}
                 <div className="flex justify-end">
                   <div className="relative w-full max-w-[200px]">
                     <select
                       value={returnReasonsMap[item.id] || ""}
                       onChange={(e) => handleReasonChange(item.id, e.target.value)}
-                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 appearance-none cursor-pointer transition-all"
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 appearance-none cursor-pointer transition-all"
                     >
                       <option value="" disabled>
                         Select reason
@@ -419,15 +705,16 @@ function Orders() {
           </div>
         </div>
 
-        {/* Submit Return Button */}
         <div className="flex justify-end">
           <button
             onClick={handleSubmitReturn}
-            className="px-8 py-3 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
+            className="px-8 py-3 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors cursor-pointer"
           >
             Submit Return
           </button>
         </div>
+
+        <ReturnConfirmModal />
       </div>
     );
   }
@@ -436,21 +723,27 @@ function Orders() {
   if (trackView && selectedOrder) {
     return (
       <div className="space-y-6">
-        {/* Back Button */}
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <a href={LANDING_URL} className="hover:text-black transition-colors flex items-center gap-1">
+            <Home className="w-4 h-4" />
+            Home
+          </a>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-gray-900 font-medium">My Orders</span>
+        </div>
+
         <button
           onClick={goBack}
-          className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-black transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-black transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Orders
         </button>
 
-        {/* TRACK Header */}
         <div className="text-center">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-widest uppercase">TRACK</h1>
         </div>
 
-        {/* Order Info Card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="space-y-2">
@@ -468,18 +761,15 @@ function Orders() {
           </div>
         </div>
 
-        {/* Order Timeline */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 md:p-8">
           <h2 className="text-base font-semibold text-gray-900 mb-6">Order Timeline</h2>
-          
+
           <div className="relative">
-            {/* Vertical line */}
             <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-gray-200" />
-            
+
             <div className="space-y-8">
               {selectedOrder.trackingSteps.map((step, index) => (
                 <div key={index} className="relative flex gap-4">
-                  {/* Blue Dot */}
                   <div className={`w-6 h-6 rounded-full flex-shrink-0 z-10 bg-blue-500 ${
                     step.completed ? "opacity-100" : "opacity-40"
                   }`} />
@@ -521,11 +811,19 @@ function Orders() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <a href={LANDING_URL} className="hover:text-black transition-colors flex items-center gap-1">
+          <Home className="w-4 h-4" />
+          Home
+        </a>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">My Orders</span>
+      </div>
+
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">My Orders</h1>
       </div>
 
-      {/* Tabs with Icons */}
       <div className="bg-white rounded-xl border border-gray-200 p-2">
         <div className="flex justify-between overflow-x-auto">
           {tabs.map((tab) => {
@@ -535,8 +833,8 @@ function Orders() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 text-center px-4 py-2.5 text-sm font-medium transition-all duration-200 relative whitespace-nowrap ${
-                  isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
+                className={`flex-1 flex items-center justify-center gap-2 text-center px-4 py-2.5 text-sm font-medium transition-all duration-200 relative whitespace-nowrap cursor-pointer select-none ${
+                  isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Icon className="w-4 h-4" strokeWidth={1.5} />
@@ -550,7 +848,6 @@ function Orders() {
         </div>
       </div>
 
-      {/* Orders List */}
       <div className="space-y-6">
         {sortedOrders.length === 0 ? (
           <EmptyState />
@@ -559,12 +856,11 @@ function Orders() {
         )}
       </div>
 
-      {/* Pagination */}
       <div className="flex items-center justify-end gap-2">
         <button
           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           disabled={currentPage === 1}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -576,7 +872,7 @@ function Orders() {
         <button
           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}
-          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -590,7 +886,7 @@ function Orders() {
               <h3 className="text-lg font-semibold text-gray-900">Write a Review</h3>
               <button
                 onClick={() => setShowReviewModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -616,7 +912,7 @@ function Orders() {
                     <button
                       key={star}
                       onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                      className="p-1 transition-colors"
+                      className="p-1 transition-colors cursor-pointer"
                     >
                       <Star
                         className={`w-8 h-8 ${
@@ -628,6 +924,13 @@ function Orders() {
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {reviewForm.rating > 0 ? (
+                    reviewForm.rating <= 2 ? "We're sorry to hear that. Please tell us more." :
+                    reviewForm.rating === 3 ? "Thanks for your feedback!" :
+                    "Great! We're glad you liked it."
+                  ) : "Tap a star to rate"}
+                </p>
               </div>
 
               <div>
@@ -637,7 +940,7 @@ function Orders() {
                   onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
                   rows={4}
-                  placeholder="Share your experience with this product..."
+                  placeholder="Share your experience with this product... What did you like or dislike?"
                 />
               </div>
             </div>
@@ -645,14 +948,14 @@ function Orders() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowReviewModal(false)}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitReview}
                 disabled={reviewForm.rating === 0}
-                className="flex-1 px-4 py-3 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Submit Review
               </button>
@@ -660,6 +963,8 @@ function Orders() {
           </div>
         </div>
       )}
+
+      <ReturnConfirmModal />
     </div>
   );
 }

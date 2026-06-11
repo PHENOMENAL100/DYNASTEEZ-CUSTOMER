@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import CustomerSidebar from "../components/CustomerSidebar";
 import Topbar from "../components/Topbar";
+import ChatWidget from "../components/ChatWidget";
 
 function CustomerLayout() {
   return (
@@ -12,6 +13,8 @@ function CustomerLayout() {
           <Outlet />
         </main>
       </div>
+
+      <ChatWidget context="user" position="bottom-right" />
     </div>
   );
 }
