@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { RotateCcw, Banknote, CreditCard, Crown } from "lucide-react";
+import { RotateCcw, Banknote, CreditCard, Crown, Home, ChevronRight } from "lucide-react";
+
+const LANDING_URL = 'http://localhost:5175';
 
 function Policy() {
   const [activeTab, setActiveTab] = useState("Return Policy");
@@ -348,6 +350,16 @@ function Policy() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+        <a href={LANDING_URL} className="hover:text-black transition-colors flex items-center gap-1">
+          <Home className="w-4 h-4" />
+          Home
+        </a>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">Policy</span>
+      </div>
+
       <h1 className="text-xl font-semibold text-gray-900 mb-6">Policy</h1>
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
