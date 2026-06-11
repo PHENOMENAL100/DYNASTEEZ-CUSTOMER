@@ -8,19 +8,39 @@ import {
   CreditCard,
   Settings,
   Crown,
+  Home,
+  ChevronRight,
 } from "lucide-react";
 import useCustomerProfile from "../../hooks/useCustomerProfile";
 import useAddresses from "../../hooks/useAddresses";
 import customerService from "../../services/customerService";
 
+const LANDING_URL = 'http://localhost:5175';
+
 function MyAccount() {
   const { profile, loading: profileLoading, updateProfile, updatePassword } = useCustomerProfile();
   const { addresses, loading: addressesLoading, addAddress, updateAddress, deleteAddress } = useAddresses();
   
+  // Get user data from localStorage (set by landing page LoginModal)
+  const storedUser = JSON.parse(localStorage.getItem('dynasteez_user') || '{}');
+  const userFirstName = storedUser.firstName || 'Customer';
+  const userLastName = storedUser.lastName || '';
+  const userFullName = `${userFirstName} ${userLastName}`.trim();
+  const userEmail = storedUser.email || 'customer@dynasteez.com';
+  const userPhone = storedUser.phone || '+234 0000000000';
+
   const [activeTab, setActiveTab] = useState("Profile");
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+  const [addresses, setAddresses] = useState([
+    {
+      id: 1,
+      name: userFullName,
+      address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
+      phone: userPhone,
+    },
+  ]);
   const [addressForm, setAddressForm] = useState({
     name: "",
     address: "",
@@ -37,6 +57,9 @@ function MyAccount() {
     username: "",
     email: "",
     phone: "",
+    username: userFirstName,
+    email: userEmail,
+    phone: userPhone,
     password: "***********",
   });
 
@@ -83,6 +106,12 @@ function MyAccount() {
     { id: "Manage", label: "Manage Account", icon: Settings },
     { id: "VIP", label: "Dynasteez VIP", icon: Crown },
   ];
+
+  const [profileData, setProfileData] = useState({
+    username: userFirstName,
+    favoriteCategories: [],
+    favoriteStyles: [],
+  });
 
   const categories = ["Women", "Men", "Kids"];
   const styles = ["Basic", "Casual", "Sporty", "Corporate"];
@@ -872,9 +901,19 @@ function MyAccount() {
         </div>
       )}
 
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <a href={LANDING_URL} className="hover:text-black transition-colors flex items-center gap-1">
+          <Home className="w-4 h-4" />
+          Home
+        </a>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-gray-900 font-medium">My Account</span>
+      </div>
+
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-          Hi Emmanuel!
+          Hi {userFirstName}!
         </h1>
       </div>
 
