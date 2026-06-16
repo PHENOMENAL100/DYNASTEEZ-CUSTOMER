@@ -33,14 +33,6 @@ function MyAccount() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
-  const [addresses, setAddresses] = useState([
-    {
-      id: 1,
-      name: userFullName,
-      address: "12 Admiralty Way, Lekki Phase 1, Lagos State.",
-      phone: userPhone,
-    },
-  ]);
   const [addressForm, setAddressForm] = useState({
     name: "",
     address: "",
@@ -54,9 +46,6 @@ function MyAccount() {
     cvv: "",
   });
   const [manageData, setManageData] = useState({
-    username: "",
-    email: "",
-    phone: "",
     username: userFirstName,
     email: userEmail,
     phone: userPhone,
@@ -94,7 +83,7 @@ function MyAccount() {
     confirmPassword: "",
   });
   const [profileData, setProfileData] = useState({
-    username: "",
+    username: userFirstName,
     favoriteCategories: [],
     favoriteStyles: [],
   });
@@ -106,12 +95,6 @@ function MyAccount() {
     { id: "Manage", label: "Manage Account", icon: Settings },
     { id: "VIP", label: "Dynasteez VIP", icon: Crown },
   ];
-
-  const [profileData, setProfileData] = useState({
-    username: userFirstName,
-    favoriteCategories: [],
-    favoriteStyles: [],
-  });
 
   const categories = ["Women", "Men", "Kids"];
   const styles = ["Basic", "Casual", "Sporty", "Corporate"];
