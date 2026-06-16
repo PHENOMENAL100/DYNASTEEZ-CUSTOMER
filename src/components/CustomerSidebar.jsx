@@ -18,6 +18,7 @@ function CustomerSidebar() {
     { name: "Policy",           path: "/policy",           icon: <ScrollText size={20} /> },
   ];
 
+
   return (
     <>
       <div className="fixed top-0 left-0 h-screen bg-[#E5EBF0] shadow-sm z-50 w-[70px] md:w-[250px] flex flex-col">

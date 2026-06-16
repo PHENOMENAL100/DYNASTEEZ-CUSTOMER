@@ -180,10 +180,8 @@ function Topbar() {
   };
 
   const handleLogoutClick = () => {
-    localStorage.removeItem('dynasteez_token');
-    localStorage.removeItem('dynasteez_user');
-    localStorage.removeItem('dynasteez_profile_image');
-    window.location.href = LANDING_URL;
+
+    
     setOpen(false);
   };
 
