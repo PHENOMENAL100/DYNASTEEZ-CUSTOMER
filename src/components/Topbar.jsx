@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ShoppingCart, Bell, Settings, LogOut, Package, Truck, CheckCircle, X, ArrowLeft, Clock, Trash2 } from "lucide-react";
+import { ShoppingCart, Bell, Settings, LogOut, Package, Truck, CheckCircle, X, ArrowLeft, Clock, Trash2, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/dynasteez.customerlogo.jpg";
 
@@ -100,6 +100,7 @@ function Topbar() {
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [notifFilter, setNotifFilter] = useState("all");
   const [cartCount, setCartCount] = useState(getCartCount());
+  const [profileImage, setProfileImage] = useState(null);
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
   const navigate = useNavigate();
@@ -116,13 +117,38 @@ function Topbar() {
     ? storedUser.firstName.charAt(0).toUpperCase()
     : 'C';
 
+  // Load profile image from localStorage
+  useEffect(() => {
+    const storedImage = localStorage.getItem('dynasteez_profile_image');
+    if (storedImage) {
+      setProfileImage(storedImage);
+    }
+  }, []);
+
+  // Listen for storage changes (so if Settings updates the image, Topbar updates too)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedImage = localStorage.getItem('dynasteez_profile_image');
+      setProfileImage(storedImage || null);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    // Also poll for changes since storage event doesn't fire on same tab
+    const interval = setInterval(handleStorageChange, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   // Listen for cart changes (storage event + interval poll)
   useEffect(() => {
     const updateCart = () => setCartCount(getCartCount());
-    
+
     window.addEventListener('storage', updateCart);
     const interval = setInterval(updateCart, 1000); // Poll every second
-    
+
     return () => {
       window.removeEventListener('storage', updateCart);
       clearInterval(interval);
@@ -156,6 +182,7 @@ function Topbar() {
   const handleLogoutClick = () => {
     localStorage.removeItem('dynasteez_token');
     localStorage.removeItem('dynasteez_user');
+    localStorage.removeItem('dynasteez_profile_image');
     window.location.href = LANDING_URL;
     setOpen(false);
   };
@@ -200,6 +227,27 @@ function Topbar() {
     { id: "promos", label: "Promos", count: notifications.filter(n => n.type === "promo").length },
   ];
 
+  // ─── AVATAR RENDERER ───
+  const AvatarDisplay = ({ size = "small" }) => {
+    const sizeClasses = size === "small" ? "w-8 h-8 text-sm" : "w-10 h-10 text-base";
+
+    if (profileImage) {
+      return (
+        <img 
+          src={profileImage} 
+          alt="Profile" 
+          className={`${sizeClasses} rounded-full object-cover border-2 border-white shadow-sm`}
+        />
+      );
+    }
+
+    return (
+      <div className={`${sizeClasses} rounded-full bg-[#032B79] flex items-center justify-center`}>
+        <span className="text-white font-bold">{initials}</span>
+      </div>
+    );
+  };
+
   // ─── VIEW ALL NOTIFICATIONS PAGE ───
   if (showAllNotifs) {
     return (
@@ -234,8 +282,8 @@ function Topbar() {
               </button>
             </div>
             <div className="relative" ref={dropdownRef}>
-              <div onClick={() => setOpen(!open)} className="w-8 h-8 rounded-full overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-[#032B79] flex items-center justify-center">
-                <span className="text-white text-sm font-bold">{initials}</span>
+              <div onClick={() => setOpen(!open)} className="cursor-pointer hover:opacity-90 transition-opacity">
+                <AvatarDisplay size="small" />
               </div>
               {open && (
                 <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
@@ -245,7 +293,7 @@ function Topbar() {
                   </div>
                   <button onClick={handleProfileClick} className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm font-medium border-b border-gray-100 flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-blue-600">{initials}</span>
+                      <User className="w-4 h-4 text-blue-600" />
                     </div>
                     Profile
                   </button>
@@ -520,16 +568,21 @@ function Topbar() {
         <div className="relative" ref={dropdownRef}>
           <div
             onClick={() => setOpen(!open)}
-            className="w-8 h-8 rounded-full overflow-hidden cursor-pointer hover:opacity-90 transition-opacity bg-[#032B79] flex items-center justify-center"
+            className="cursor-pointer hover:opacity-90 transition-opacity"
           >
-            <span className="text-white text-sm font-bold">{initials}</span>
+            <AvatarDisplay size="small" />
           </div>
 
           {open && (
             <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
               <div className="p-3 border-b border-gray-200">
-                <p className="font-semibold text-sm text-gray-900 truncate">{displayName}</p>
-                <p className="text-xs text-gray-500 truncate">{displayEmail}</p>
+                <div className="flex items-center gap-3">
+                  <AvatarDisplay size="small" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{displayName}</p>
+                    <p className="text-xs text-gray-500 truncate">{displayEmail}</p>
+                  </div>
+                </div>
               </div>
 
               <button
@@ -537,7 +590,7 @@ function Topbar() {
                 className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm font-medium border-b border-gray-100 flex items-center gap-3"
               >
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-blue-600">{initials}</span>
+                  <User className="w-4 h-4 text-blue-600" />
                 </div>
                 Profile
               </button>

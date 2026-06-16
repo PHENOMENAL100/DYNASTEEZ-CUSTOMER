@@ -5,6 +5,7 @@ import Orders from "./pages/customer/Orders";
 import Favorite from "./pages/customer/Favorite";
 import CustomerService from "./pages/customer/CustomerService";
 import Policy from "./pages/customer/Policy";
+import Settings from "./pages/customer/Settings";
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="favorite" element={<Favorite />} />
           <Route path="customer-service" element={<CustomerService />} />
           <Route path="policy" element={<Policy />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </Router>
